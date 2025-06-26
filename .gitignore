@@ -1,0 +1,24 @@
+# 👉 Go build files
+*.exe
+*.out
+*.test
+
+# 👉 Module vendor dir
+vendor/
+
+# 👉 Configs & secrets
+.env
+
+# 👉 Logs
+*.log
+
+# 👉 System / Editor files
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# 👉 Build artifacts
+bin/
+
+firebase-service-account.json

@@ -48,6 +48,7 @@ func main() {
 	mux.HandleFunc("/api/blocks", handlers.BlockListHandler)
 	mux.HandleFunc("/admin/add-candidate", handlers.AddCandidateHandler)
 	mux.HandleFunc("/admin/start-voting", handlers.StartVotingHandler)
+	mux.HandleFunc("/register", handlers.RegisterHandler)
 
 	log.Println("✅ Server running at http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", corsMiddleware(mux)))

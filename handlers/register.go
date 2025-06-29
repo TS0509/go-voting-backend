@@ -1,13 +1,9 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
-	"net/http"
-
 	"go-voting-backend/utils"
-
-	"cloud.google.com/go/firestore"
+	"net/http"
 )
 
 type RegisterRequest struct {
@@ -15,27 +11,41 @@ type RegisterRequest struct {
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
 	var req RegisterRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// 创建新钱包
 	wallet, err := utils.GenerateWallet()
 	if err != nil {
-		http.Error(w, "failed to generate wallet", http.StatusInternalServerError)
+		http.Error(w, "failed to generate wallet: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	client, err := firestore.NewClient(ctx, "voting-system-8b230")
-	if err != nil {
-		http.Error(w, "firestore error", http.StatusInternalServerError)
+
+	// 自动打币
+	if err := utils.FundWallet(wallet.Address); err != nil {
+		http.Error(w, "funding failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer client.Close()
-	_, err = client.Collection("users").Doc(req.IC).Set(ctx, map[string]interface{}{
-		"address":     wallet.Address,
-		"private_key": wallet.PrivateKey,
+
+	// 写 Firestore
+	user := utils.User{
+		IC:         req.IC,
+		PrivateKey: wallet.PrivateKey,
+		Address:    wallet.Address,
+		FaceImage:  "",
+		HasVoted:   false,
+		LastIP:     "",
+	}
+
+	if err := utils.SaveUser(user); err != nil {
+		http.Error(w, "failed to save user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"address": wallet.Address,
 	})
-	if err != nil {
-		http.Error(w, "save failed", http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(wallet)
 }

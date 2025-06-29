@@ -10,6 +10,8 @@ import (
 type User struct {
 	IC         string `firestore:"ic"`
 	PrivateKey string `firestore:"privateKey"`
+	Address    string `firestore:"address"`
+	FaceImage  string `firestore:"faceImageUrl"`
 	HasVoted   bool   `firestore:"hasVoted"`
 	LastIP     string `firestore:"lastIP"`
 }

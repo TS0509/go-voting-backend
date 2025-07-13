@@ -19,7 +19,8 @@ var (
 func InitFirestore() error {
 	initOnce.Do(func() {
 		ctx := context.Background()
-		sa := option.WithCredentialsFile("config/firebase-service-account.json")
+		// ✅ Render 环境下 Secret File 是平铺的，不能有路径
+		sa := option.WithCredentialsFile("firebase-service-account.json")
 		FirestoreClient, initErr = firestore.NewClient(ctx, "voting-system-8b230", sa)
 	})
 	return initErr
@@ -28,7 +29,6 @@ func InitFirestore() error {
 func IsICRegistered(ic string) (bool, error) {
 	doc, err := FirestoreClient.Collection("users").Doc(ic).Get(context.Background())
 	if err != nil {
-		// 🔧 修复点：判断是否 NotFound
 		if status.Code(err) == codes.NotFound {
 			return false, nil
 		}

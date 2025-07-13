@@ -19,6 +19,20 @@ type VoteRequest struct {
 	IC             string `json:"ic"`
 }
 
+// 提取真实 IP
+func getRealIP(r *http.Request) string {
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		ips := strings.Split(xff, ",")
+		return strings.TrimSpace(ips[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return "127.0.0.1"
+	}
+	return host
+}
+
 func VoteHandler(w http.ResponseWriter, r *http.Request) {
 	var req VoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -45,20 +59,13 @@ func VoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 解析ip
-	ipStr := strings.Split(r.RemoteAddr, ":")[0]
+	ipStr := getRealIP(r)
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		ip = net.IPv4(127, 0, 0, 1)
 	}
 
-	// eligibility
-	dbClient, err := utils.GetFirestoreClient()
-	if err != nil {
-		http.Error(w, "firestore error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := utils.CheckVoteEligibility(req.IC, ip, dbClient); err != nil {
+	if err := utils.CheckVoteEligibility(req.IC, ip, utils.FirestoreClient); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
@@ -84,12 +91,17 @@ func VoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.MarkUserVoted(req.IC); err != nil {
-		http.Error(w, "vote success but mark error: "+err.Error(), http.StatusInternalServerError)
-		return
+	// 标记已投票（增强版支持 IP）
+	markErr := utils.MarkUserVoted(req.IC, ipStr)
+
+	// 正常响应
+	resp := map[string]string{
+		"txHash": tx.Hash().Hex(),
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"txHash": tx.Hash().Hex(),
-	})
+	if markErr != nil {
+		resp["warning"] = "Vote succeeded, but failed to mark user as voted"
+	}
+
+	json.NewEncoder(w).Encode(resp)
 }

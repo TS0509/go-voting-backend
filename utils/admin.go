@@ -7,10 +7,7 @@ import (
 )
 
 func GetAdminPassword() (string, error) {
-	client, err := GetFirestoreClient()
-	if err != nil {
-		return "", err
-	}
+	client := FirestoreClient
 
 	doc, err := client.Collection("admins").Doc("admin1").Get(context.Background())
 	if err != nil {

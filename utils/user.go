@@ -18,35 +18,27 @@ type User struct {
 
 // 根据 IC 获取用户
 func GetUserByIC(ic string) (*User, error) {
-	client, err := GetFirestoreClient()
+	doc, err := FirestoreClient.Collection("users").Doc(ic).Get(context.Background())
 	if err != nil {
-		return nil, err
-	}
-
-	doc, err := client.Collection("users").Doc(ic).Get(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("IC not found: %s", ic)
+		return nil, fmt.Errorf("failed to get user by IC (%s): %v", ic, err)
 	}
 
 	var user User
 	if err := doc.DataTo(&user); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse user data: %v", err)
 	}
 
 	return &user, nil
 }
 
-// 更新为已投票状态
-func MarkUserVoted(ic string) error {
-	client, err := GetFirestoreClient()
-	if err != nil {
-		return err
-	}
-
-	_, err = client.Collection("users").Doc(ic).Update(context.Background(), []firestore.Update{
+// 标记用户已投票，记录真实 IP
+func MarkUserVoted(ic string, ip string) error {
+	_, err := FirestoreClient.Collection("users").Doc(ic).Update(context.Background(), []firestore.Update{
 		{Path: "hasVoted", Value: true},
-		{Path: "lastIP", Value: "127.0.0.1"}, // 🛠 这里你可以替换为真实 IP
+		{Path: "lastIP", Value: ip},
 	})
-
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to mark user voted: %v", err)
+	}
+	return nil
 }

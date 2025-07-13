@@ -2,14 +2,23 @@ package utils
 
 import (
 	"context"
+
+	"cloud.google.com/go/firestore"
 )
 
-// 直接写入用户
 func SaveUser(user User) error {
-	client, err := GetFirestoreClient()
-	if err != nil {
-		return err
+	data := map[string]interface{}{
+		"ic":           user.IC,
+		"privateKey":   user.PrivateKey,
+		"address":      user.Address,
+		"faceImageUrl": user.FaceImage, // 🔧 字段名必须和前端一致
+		"hasVoted":     user.HasVoted,
+		"lastIP":       user.LastIP,
 	}
-	_, err = client.Collection("users").Doc(user.IC).Set(context.Background(), user)
+	_, err := FirestoreClient.Collection("users").Doc(user.IC).Set(
+		context.Background(),
+		data,
+		firestore.MergeAll, // ✅ 合并模式，OK!
+	)
 	return err
 }

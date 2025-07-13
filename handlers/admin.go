@@ -11,6 +11,7 @@ import (
 	"go-voting-backend/utils"
 )
 
+
 type AddCandidateRequest struct {
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`

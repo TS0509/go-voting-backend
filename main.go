@@ -33,8 +33,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 func main() {
 	// ✅ 加载 .env
 	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("❌ Failed to load .env")
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️ .env 文件未找到，尝试使用环境变量运行（适用于部署环境）")
 	}
 
 	// ✅ 初始化 Firestore

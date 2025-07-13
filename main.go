@@ -75,6 +75,13 @@ func main() {
 	mux.Handle("/auth/check", middleware.AuthMiddleware(http.HandlerFunc(handlers.AuthCheckHandler)))
 
 	// ✅ 启动服务器
-	log.Println("✅ Server running at http://localhost:8080")
+	// ✅ 启动服务器（判断是否部署在 Render）
+	if external := os.Getenv("RENDER_EXTERNAL_URL"); external != "" {
+		log.Println("✅ Server deployed at:", external)
+	} else {
+		log.Println("✅ Server running at http://localhost:8080")
+	}
+
 	log.Fatal(http.ListenAndServe(":8080", corsMiddleware(protected)))
+
 }

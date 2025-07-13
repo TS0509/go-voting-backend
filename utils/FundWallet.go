@@ -64,8 +64,10 @@ func FundWallet(toAddress string) error {
 	// ✨ 计算要转的钱：投票一次所需 gas + 缓冲
 	voteGas := uint64(70000) // 估计 vote() 函数 gas 用量
 	bufferGas := uint64(10000)
-	totalGas := big.NewInt(int64(voteGas + bufferGas))
-	value := new(big.Int).Mul(totalGas, gasPrice) // 转给用户的钱（单位：wei）
+	transferGas := uint64(21000)
+	totalGas := big.NewInt(int64(voteGas + bufferGas + transferGas))
+	value := new(big.Int).Mul(totalGas, gasPrice)
+	log.Printf("💸 将转账 %s wei 给 %s\n", value.String(), toAddress)
 
 	// ⛽️ 打币的 gas 消耗（固定 21000）
 	txGasLimit := uint64(21000)

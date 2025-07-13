@@ -67,7 +67,12 @@ func FundWallet(toAddress string) error {
 	transferGas := uint64(21000)
 	totalGas := big.NewInt(int64(voteGas + bufferGas + transferGas))
 	value := new(big.Int).Mul(totalGas, gasPrice)
-	log.Printf("💸 将转账 %s wei 给 %s\n", value.String(), toAddress)
+
+	fmt.Println("🔍 目标地址:", toAddress)
+	fmt.Println("🔍 发起方地址:", fromAddress.Hex())
+	fmt.Println("🔍 gasPrice:", gasPrice.String())
+	fmt.Println("🔍 totalGasUsed (vote + buffer + transfer):", totalGas.String())
+	fmt.Println("🔍 发送金额 (wei):", value.String())
 
 	// ⛽️ 打币的 gas 消耗（固定 21000）
 	txGasLimit := uint64(21000)

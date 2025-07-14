@@ -61,7 +61,7 @@ func main() {
 
 	// ✅ 普通接口
 	mux.HandleFunc("/register", handlers.RegisterHandler)
-	http.HandleFunc("/api/votelog", handlers.VoteLogHandler)
+	mux.HandleFunc("/api/votelog", handlers.VoteLogHandler)
 	mux.HandleFunc("/login", handlers.LoginHandler)
 	mux.HandleFunc("/vote", handlers.VoteHandler)
 	mux.HandleFunc("/api/blocks", handlers.BlockListHandler)

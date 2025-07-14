@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 
@@ -21,6 +22,7 @@ func InitFirestore() error {
 	initOnce.Do(func() {
 		ctx := context.Background()
 		// ✅ 直接从 Secret File 路径加载
+		fmt.Println("✅ Firestore 使用凭据文件: /etc/secrets/firebase-service-account.json")
 		sa := option.WithCredentialsFile("/etc/secrets/firebase-service-account.json")
 
 		projectID := os.Getenv("GOOGLE_PROJECT_ID")

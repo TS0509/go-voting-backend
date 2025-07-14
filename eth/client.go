@@ -117,5 +117,7 @@ func (e *EthClient) GetAuth() (*bind.TransactOpts, error) {
 	}
 
 	auth.Context = context.Background()
+
+	auth.GasLimit = uint64(100_000)
 	return auth, nil
 }

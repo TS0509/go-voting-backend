@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"cloud.google.com/go/firestore"
+	"go-voting-backend/utils"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -35,25 +35,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("🔍 登录请求的 IC: %s", req.IC)
 
-	// 🔐 Check JWT_SECRET
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		log.Println("❌ JWT_SECRET 未设置")
-		http.Error(w, "server misconfigured", http.StatusInternalServerError)
-		return
-	}
-
-	// 🔍 Firestore 查询
-	ctx := context.Background()
-	fireClient, err := firestore.NewClient(ctx, os.Getenv("GOOGLE_PROJECT_ID"))
-	if err != nil {
+	// ✅ 确保 Firestore 初始化成功
+	if err := utils.InitFirestore(); err != nil {
 		log.Printf("❌ Firestore 初始化失败: %v", err)
-		http.Error(w, "firestore init error", http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Firestore 未初始化"})
 		return
 	}
-	defer fireClient.Close()
 
-	userDoc, err := fireClient.Collection("users").Doc(req.IC).Get(ctx)
+	// 🔍 查找用户
+	userDoc, err := utils.FirestoreClient.Collection("users").Doc(req.IC).Get(r.Context())
 	if err != nil {
 		log.Printf("❌ Firestore 查询失败（IC=%s）: %v", req.IC, err)
 		http.Error(w, "user not found", http.StatusUnauthorized)
@@ -74,6 +66,13 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🧑 角色: %s", role)
 
 	// 🧾 生成 JWT
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Println("❌ JWT_SECRET 未设置")
+		http.Error(w, "server misconfigured", http.StatusInternalServerError)
+		return
+	}
+
 	expiration := time.Now().Add(24 * time.Hour).Unix()
 	claims := jwt.MapClaims{
 		"ic":   req.IC,

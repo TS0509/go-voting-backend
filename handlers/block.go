@@ -25,19 +25,23 @@ func BlockListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 获取最新区块号
 	latest, err := client.Client.BlockNumber(context.Background())
 	if err != nil {
 		http.Error(w, "Failed to get latest block: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 遍历从创世块（区块号 0）到最新区块
+	const MaxBlocks = 20
+	start := int64(0)
+	if int64(latest) > MaxBlocks {
+		start = int64(latest) - MaxBlocks + 1
+	}
+
 	var blocks []ExportedBlock
-	for i := int64(0); i <= int64(latest); i++ {
+	for i := start; i <= int64(latest); i++ {
 		block, err := client.Client.BlockByNumber(context.Background(), big.NewInt(i))
 		if err != nil {
-			continue // 忽略失败的块
+			continue
 		}
 
 		var txs []string

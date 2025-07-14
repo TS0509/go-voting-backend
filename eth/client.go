@@ -17,10 +17,11 @@ import (
 )
 
 type EthClient struct {
-	Client   *ethclient.Client
-	Contract *contract.Voting
-	PrivKey  *ecdsa.PrivateKey
-	ChainID  *big.Int
+	Client          *ethclient.Client
+	Contract        *contract.Voting
+	ContractAddress common.Address
+	PrivKey         *ecdsa.PrivateKey
+	ChainID         *big.Int
 }
 
 var (
@@ -57,10 +58,11 @@ func InitClient(rpcURL string, contractAddr common.Address, privateKey string) e
 		}
 
 		globalClient = &EthClient{
-			Client:   client,
-			Contract: contractInstance,
-			PrivKey:  priv,
-			ChainID:  chainID,
+			Client:          client,
+			Contract:        contractInstance,
+			ContractAddress: contractAddr,
+			PrivKey:         priv,
+			ChainID:         chainID,
 		}
 	})
 	return err
@@ -99,10 +101,11 @@ func NewEthClient(rpcURL string, contractAddr common.Address, privateKey string)
 	}
 
 	return &EthClient{
-		Client:   client,
-		Contract: contractInstance,
-		PrivKey:  priv,
-		ChainID:  chainID,
+		Client:          client,
+		Contract:        contractInstance,
+		ContractAddress: contractAddr,
+		PrivKey:         priv,
+		ChainID:         chainID,
 	}, nil
 }
 

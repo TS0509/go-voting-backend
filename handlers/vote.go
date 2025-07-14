@@ -52,6 +52,13 @@ func VoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("✅ Firestore 用户获取成功: %+v", user)
 
+	// ✅ 加这一段 —— 防止重复投票
+	if user.HasVoted {
+		log.Println("❌ 用户已投过票，拒绝重复投票")
+		http.Error(w, "Already voted", http.StatusBadRequest)
+		return
+	}
+
 	rpc := os.Getenv("RPC_URL")
 	contract := os.Getenv("CONTRACT_ADDRESS")
 	if rpc == "" || contract == "" {
@@ -74,6 +81,7 @@ func VoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("🔍 用户 IP:", ipStr)
 
+	// ✅ 额外限制：IP + IC 重复
 	if err := utils.CheckVoteEligibility(req.IC, ip, utils.FirestoreClient); err != nil {
 		log.Println("❌ 投票资格检查失败:", err)
 		http.Error(w, err.Error(), http.StatusForbidden)

@@ -61,21 +61,16 @@ func FundWallet(toAddress string) error {
 		return fmt.Errorf("failed to get gas price: %v", err)
 	}
 
-	// ✨ 计算要转的钱：投票一次所需 gas + 缓冲
-	voteGas := uint64(70000) // 估计 vote() 函数 gas 用量
-	bufferGas := uint64(10000)
-	transferGas := uint64(21000)
-	totalGas := big.NewInt(int64(voteGas + bufferGas + transferGas))
-	value := new(big.Int).Mul(totalGas, gasPrice)
+	// ✅ 固定转账 0.0005 ETH（单位为 wei）
+	value := new(big.Int)
+	value.SetString("500000000000000", 10) // 0.0005 ETH
+
+	txGasLimit := uint64(21000)
 
 	fmt.Println("🔍 目标地址:", toAddress)
 	fmt.Println("🔍 发起方地址:", fromAddress.Hex())
 	fmt.Println("🔍 gasPrice:", gasPrice.String())
-	fmt.Println("🔍 totalGasUsed (vote + buffer + transfer):", totalGas.String())
 	fmt.Println("🔍 发送金额 (wei):", value.String())
-
-	// ⛽️ 打币的 gas 消耗（固定 21000）
-	txGasLimit := uint64(21000)
 
 	// 创建交易
 	tx := types.NewTransaction(
@@ -101,7 +96,7 @@ func FundWallet(toAddress string) error {
 
 	log.Println("✅ 自动打币已发送，哈希:", signedTx.Hash().Hex())
 
-	// 等待确认（轮询）
+	// 等待确认
 	for {
 		receipt, _ := client.TransactionReceipt(context.Background(), signedTx.Hash())
 		if receipt != nil {

@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"errors"
 	"math/big"
@@ -114,5 +115,7 @@ func (e *EthClient) GetAuth() (*bind.TransactOpts, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	auth.Context = context.Background()
 	return auth, nil
 }

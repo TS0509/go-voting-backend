@@ -47,12 +47,9 @@ func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 	latestBlock := latestHeader.Number.Uint64()
 
 	// ✅ 定义回溯区块数和每次查询跨度
-	const blockLookback uint64 = 3000
+	const contractDeployedAt uint64 = 8765000 // ⬅️ 这里换成你查到的部署区块号
 	const step uint64 = 500
-	startBlock := uint64(0)
-	if latestBlock > blockLookback {
-		startBlock = latestBlock - blockLookback
-	}
+	startBlock := contractDeployedAt
 
 	log.Printf("🔍 正在分段读取投票事件，起始区块 #%d -> 最新区块 #%d\n", startBlock, latestBlock)
 

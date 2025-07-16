@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"go-voting-backend/contract"
 	"go-voting-backend/eth"
@@ -19,9 +20,20 @@ type VoteLog struct {
 	BlockNumber  uint64 `json:"blockNumber"`
 }
 
+type PaginatedVoteLogs struct {
+	Logs       []VoteLog `json:"logs"`
+	TotalCount int       `json:"totalCount"`
+	Page       int       `json:"page"`
+	PageSize   int       `json:"pageSize"`
+}
+
+const contractDeployedAt uint64 = 8760000
+const step uint64 = 500
+
 func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("📥 [VoteLogHandler] 接收到请求")
 
+	// 连接客户端
 	client, err := eth.GetClient()
 	if err != nil {
 		log.Println("❌ 获取以太坊客户端失败:", err)
@@ -30,6 +42,7 @@ func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	contractAddr := client.ContractAddress
 
+	// 绑定合约
 	votingContract, err := contract.NewVoting(contractAddr, client.Client)
 	if err != nil {
 		log.Println("❌ 绑定 Voting 合约失败:", err)
@@ -37,7 +50,7 @@ func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ✅ 获取最新区块
+	// 获取最新区块
 	latestHeader, err := client.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Println("❌ 获取最新区块头失败:", err)
@@ -45,44 +58,46 @@ func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	latestBlock := latestHeader.Number.Uint64()
+	log.Printf("🧱 最新区块高度: %d\n", latestBlock)
 
-	// ✅ 定义回溯区块数和每次查询跨度
-	const contractDeployedAt uint64 = 8765000 // ⬅️ 这里换成你查到的部署区块号
-	const step uint64 = 500
-	startBlock := contractDeployedAt
+	// 分页参数处理
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("size"))
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	log.Printf("📄 请求分页参数: page=%d, size=%d\n", page, pageSize)
 
-	log.Printf("🔍 正在分段读取投票事件，起始区块 #%d -> 最新区块 #%d\n", startBlock, latestBlock)
+	var allLogs []VoteLog
+	log.Printf("🔍 正在分段读取投票事件，起始区块 #%d -> 最新区块 #%d\n", contractDeployedAt, latestBlock)
 
-	var results []VoteLog
-
-	// ✅ 分段查询 logs
-	for from := startBlock; from <= latestBlock; from += step {
+	// 批量查询 logs
+	for from := contractDeployedAt; from <= latestBlock; from += step {
 		to := from + step - 1
 		if to > latestBlock {
 			to = latestBlock
 		}
+		log.Printf("📦 查询区块 [%d - %d]", from, to)
 
-		opts := &bind.FilterOpts{
-			Start:   from,
-			End:     &to,
-			Context: context.Background(),
-		}
-
+		opts := &bind.FilterOpts{Start: from, End: &to, Context: context.Background()}
 		iter, err := votingContract.FilterVoted(opts, nil, nil)
 		if err != nil {
-			log.Printf("❌ 查询区块 [%d ~ %d] 失败: %v", from, to, err)
-			continue // 跳过失败的区段
+			log.Printf("⚠️ 查询失败 [%d - %d]: %v", from, to, err)
+			continue
 		}
-
 		for iter.Next() {
 			event := iter.Event
 			if event == nil || event.CandidateIndex == nil {
 				log.Println("⚠️ 遇到无效事件，跳过")
 				continue
 			}
-			log.Printf("✅ 捕获投票事件 - Voter: %s, Candidate: %d\n", event.Voter.Hex(), event.CandidateIndex.Uint64())
+			log.Printf("✅ 捕获投票事件 - Voter: %s, Candidate: %d, Block: %d",
+				event.Voter.Hex(), event.CandidateIndex.Uint64(), event.Raw.BlockNumber)
 
-			results = append(results, VoteLog{
+			allLogs = append(allLogs, VoteLog{
 				Voter:        event.Voter.Hex(),
 				CandidateIdx: event.CandidateIndex.Uint64(),
 				TxHash:       event.Raw.TxHash.Hex(),
@@ -95,7 +110,27 @@ func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 		iter.Close()
 	}
 
-	log.Printf("📤 共返回 %d 条投票记录\n", len(results))
+	total := len(allLogs)
+	log.Printf("📊 共捕获 %d 条投票记录", total)
+
+	// 分页截取
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+
+	paginated := PaginatedVoteLogs{
+		Logs:       allLogs[start:end],
+		TotalCount: total,
+		Page:       page,
+		PageSize:   pageSize,
+	}
+
+	log.Printf("📤 正在返回分页数据 [%d ~ %d)", start, end)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
+	json.NewEncoder(w).Encode(paginated)
 }

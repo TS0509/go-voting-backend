@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"go-voting-backend/eth"
 	"go-voting-backend/handlers"
@@ -15,24 +16,36 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// 🌐 通用 CORS 中间件
+// 🌐 支持环境变量配置的 CORS 中间件
 func corsMiddleware(next http.Handler) http.Handler {
+	allowedOrigins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*") // ⚠️ 可改为指定前端
+		origin := r.Header.Get("Origin")
+
+		// 是否匹配白名单中的 Origin
+		for _, allowed := range allowedOrigins {
+			if origin == strings.TrimSpace(allowed) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				break
+			}
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
 
 func main() {
 	// ✅ 加载 .env
-	err := godotenv.Load()
 	if err := godotenv.Load(); err != nil {
 		log.Println("⚠️ .env 文件未找到，尝试使用环境变量运行（适用于部署环境）")
 	}
@@ -47,8 +60,7 @@ func main() {
 	privateKey := os.Getenv("PRIVATE_KEY")
 	contractAddr := common.HexToAddress(os.Getenv("CONTRACT_ADDRESS"))
 
-	err = eth.InitClient(rpcURL, contractAddr, privateKey)
-	if err != nil {
+	if err := eth.InitClient(rpcURL, contractAddr, privateKey); err != nil {
 		log.Fatal("❌ InitClient failed:", err)
 	}
 
@@ -76,7 +88,6 @@ func main() {
 	mux.Handle("/auth/check", middleware.AuthMiddleware(http.HandlerFunc(handlers.AuthCheckHandler)))
 
 	// ✅ 启动服务器
-	// ✅ 启动服务器（判断是否部署在 Render）
 	if external := os.Getenv("RENDER_EXTERNAL_URL"); external != "" {
 		log.Println("✅ Server deployed at:", external)
 	} else {
@@ -84,5 +95,4 @@ func main() {
 	}
 
 	log.Fatal(http.ListenAndServe(":8080", corsMiddleware(protected)))
-
 }

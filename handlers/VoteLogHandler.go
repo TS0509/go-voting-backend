@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"go-voting-backend/contract"
@@ -27,9 +28,31 @@ type PaginatedVoteLogs struct {
 	PageSize   int       `json:"pageSize"`
 }
 
-const contractDeployedAt uint64 = 8760000
-const step uint64 = 500
+var contractDeployedAt uint64
+var step uint64
 
+func init() {
+	// 从环境变量读取
+	if val := os.Getenv("CONTRACT_DEPLOYED_AT"); val != "" {
+		if num, err := strconv.ParseUint(val, 10, 64); err == nil {
+			contractDeployedAt = num
+		} else {
+			log.Fatalf("❌ 无效的 CONTRACT_DEPLOYED_AT 值: %v", err)
+		}
+	} else {
+		log.Fatal("❌ 缺少 CONTRACT_DEPLOYED_AT 环境变量")
+	}
+
+	if val := os.Getenv("STEP"); val != "" {
+		if num, err := strconv.ParseUint(val, 10, 64); err == nil {
+			step = num
+		} else {
+			log.Fatalf("❌ 无效的 STEP 值: %v", err)
+		}
+	} else {
+		step = 500 // 默认值
+	}
+}
 func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("📥 [VoteLogHandler] 接收到请求")
 

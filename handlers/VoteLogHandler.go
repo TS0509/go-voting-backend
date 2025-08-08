@@ -32,7 +32,6 @@ var contractDeployedAt uint64
 var step uint64
 
 func init() {
-	// 从环境变量读取
 	if val := os.Getenv("CONTRACT_DEPLOYED_AT"); val != "" {
 		if num, err := strconv.ParseUint(val, 10, 64); err == nil {
 			contractDeployedAt = num
@@ -40,7 +39,9 @@ func init() {
 			log.Fatalf("❌ 无效的 CONTRACT_DEPLOYED_AT 值: %v", err)
 		}
 	} else {
-		log.Fatal("❌ 缺少 CONTRACT_DEPLOYED_AT 环境变量")
+		// 没设置就给个默认值（比如本地测试用）
+		contractDeployedAt = 8939266
+		log.Println("⚠️ 未设置 CONTRACT_DEPLOYED_AT，使用默认值 8939266")
 	}
 
 	if val := os.Getenv("STEP"); val != "" {
@@ -50,9 +51,10 @@ func init() {
 			log.Fatalf("❌ 无效的 STEP 值: %v", err)
 		}
 	} else {
-		step = 500 // 默认值
+		step = 500
 	}
 }
+
 func VoteLogHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("📥 [VoteLogHandler] 接收到请求")
 
